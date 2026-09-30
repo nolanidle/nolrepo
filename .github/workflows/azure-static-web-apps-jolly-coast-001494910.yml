@@ -3,12 +3,11 @@ name: Azure Static Web Apps CI/CD
 on:
   push:
     branches:
-      - devin/1790778742-fix-cloaked-html-escaping
+      - main
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
-      - devin/1790778742-fix-cloaked-html-escaping
-
+      - main
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')

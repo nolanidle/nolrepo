@@ -2424,6 +2424,125 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
 </body>
 </html>`;
 }
+var SC = String.fromCharCode(60, 47, 115, 99, 114, 105, 112, 116, 62);
+function buildSettingsBlobHTML(){
+  var presetJson = JSON.stringify(PRESETS);
+  var safesJson = JSON.stringify(SAFES);
+  var safeLabelsJson = JSON.stringify(['Schoology', 'Google', 'Google Classroom', 'Canvas', 'Clever', 'PowerSchool']);
+  var curJson = JSON.stringify({ preset: S.preset, panicKey: S.panicKey, panicDest: S.panicDest, target: S.target, decoyOnly: !!S.decoyOnly });
+  var targetsJson = JSON.stringify(TARGETS);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Home | Schoology</title>
+<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCE4DN3jddG3WbA16h-KqHkoYObeVKgRquEZiGHas4prHd6WHLWgvryUk&amp;s=10" />
+<style>
+:root{--navy:#172c57;--blue:#315fe8;--violet:#7050e8;--ink:#14233f;--muted:#637594;--line:#dce7f6;--soft:#f5f8fd;--green:#159b68}
+*{box-sizing:border-box}html{min-height:100%;background:#eef5ff}body{margin:0;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(circle at 95% 8%,#d9f2ff 0,transparent 32%),radial-gradient(circle at 0 100%,#ded8ff 0,transparent 34%),#eef5ff;min-height:100vh;padding:24px}
+.b-shell{max-width:1080px;margin:auto}.b-top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 22px;padding:0 4px}.b-brand{display:flex;align-items:center;gap:10px;color:var(--navy);font-weight:850;letter-spacing:-.045em;font-size:1.05rem}.b-mark{width:34px;height:34px;display:grid;place-items:center;border-radius:11px 11px 11px 4px;background:linear-gradient(135deg,var(--blue),var(--violet));color:#fff;box-shadow:0 9px 20px #315fe83d}.b-top-note{display:flex;align-items:center;gap:7px;color:#5b7191;font-size:.74rem;font-weight:750}.live-dot{width:7px;height:7px;border-radius:50%;background:#35c48d;box-shadow:0 0 0 4px #d8f7e9}
+.b-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}.b-side,.b-main{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 22px 50px #254a7e1c}.b-side{padding:22px;position:sticky;top:24px}.b-side h1{margin:0;color:var(--navy);font-size:1.55rem;letter-spacing:-.045em;line-height:1.05}.b-side .sub{margin:9px 0 20px;color:var(--muted);font-size:.78rem;line-height:1.55}.b-preview{padding:15px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,#f8fbff,#eef4ff)}.b-preview-head{display:flex;align-items:center;justify-content:space-between;color:#7288a5;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;font-weight:850}.b-preview-window{margin-top:13px;overflow:hidden;border:1px solid #dbe6f4;border-radius:11px;background:#fff;box-shadow:0 9px 20px #315fe817}.b-window-bar{height:29px;display:flex;align-items:center;gap:4px;padding:0 9px;background:#f4f7fc;border-bottom:1px solid #e7eef8}.b-window-bar i{width:6px;height:6px;border-radius:50%;background:#efaaa2}.b-window-bar i:nth-child(2){background:#f3d078}.b-window-bar i:nth-child(3){background:#8bd7b3}.b-tab{display:flex;align-items:center;gap:7px;padding:12px 10px}.b-tab img{width:22px;height:22px;border-radius:6px;background:#eef3fa}.b-tab strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#263e68;font-size:.77rem}.b-tab small{display:block;margin-top:2px;color:#91a0b6;font-size:.62rem}.b-side-actions{display:grid;gap:9px;margin-top:18px}.b-side-actions a,.b-side-actions button{width:100%;text-align:center;text-decoration:none}.b-hint{display:flex;gap:9px;align-items:flex-start;margin-top:18px;padding-top:16px;border-top:1px solid #e7eef8;color:#637594;font-size:.71rem;line-height:1.5}.b-hint strong{display:block;color:#29436c}.hint-icon{width:23px;height:23px;flex:none;display:grid;place-items:center;border-radius:7px;background:#e9f1ff;color:var(--blue);font-size:.75rem;font-weight:850}
+.b-main{padding:25px}.b-main-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}.b-main-head h2{margin:0;color:var(--navy);font-size:1.16rem;letter-spacing:-.03em}.b-main-head p{margin:5px 0 0;color:var(--muted);font-size:.76rem}.save-state{padding:7px 9px;border-radius:8px;background:#e4f7ec;color:#147a4e;font-size:.68rem;font-weight:850;white-space:nowrap}.bgroup{border:1px solid #e4ecf7;border-radius:15px;padding:17px 18px;background:#fbfdff;margin-bottom:13px}.bgroup:last-of-type{margin-bottom:0}.bgroup-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}.step{width:27px;height:27px;display:grid;place-items:center;flex:none;border-radius:9px;background:#e9f1ff;color:var(--blue);font-size:.72rem;font-weight:900}.bgroup h2{margin:1px 0 0;font-size:.88rem;color:#1d3764}.bgroup p{margin:4px 0 0;font-size:.73rem;color:#637791;line-height:1.45}.bgroup label{display:block;font-size:.7rem;font-weight:800;color:#3c557c;margin:10px 0 5px}.bgroup select,.bgroup input[type=text]{width:100%;border:1px solid #d2dfef;border-radius:9px;padding:10px 11px;font:650 .78rem inherit;color:#1d3764;background:#fff}.bgroup select:focus,.bgroup input:focus{outline:3px solid #cbe5ff;outline-offset:1px;border-color:#7cacf5}.bpreview{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e1eaf5;border-radius:10px;padding:10px 11px;margin-top:10px}.bpreview img{width:23px;height:23px;border-radius:6px;background:#eef3fa;flex:none}.bpreview span{font-size:.77rem;font-weight:750;color:#2b4269;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bcheck{display:flex;align-items:flex-start;gap:9px;margin-top:11px;padding:10px 11px;border:1px solid #e1eaf5;border-radius:10px;background:#fff;font-size:.74rem;color:#3c557c;font-weight:650;line-height:1.45;cursor:pointer}.bcheck:has(input:checked){border-color:#a8c8ff;background:#f4f8ff}.bcheck input{margin-top:2px;accent-color:var(--blue)}.bopen{display:block;width:100%;margin-top:13px;border:0;border-radius:10px;padding:13px;font:800 .84rem inherit;color:#fff;background:linear-gradient(120deg,var(--blue),var(--violet));cursor:pointer;box-shadow:0 12px 22px #315fe83d;transition:transform .18s ease,box-shadow .18s ease}.bopen:hover{transform:translateY(-1px);box-shadow:0 15px 26px #315fe84a}.bopen.plain{background:#fff;color:#b3273b;border:1px solid #f0c9cf;box-shadow:none}.bstatus{margin-top:11px;min-height:18px;color:#426181;font-size:.78rem;font-weight:750}.bstatus.error{color:#c53d51}.bfoot{margin:17px 2px 0;color:#8293ab;font-size:.7rem;line-height:1.5}kbd{background:#eef3fa;border:1px solid #d3dfee;border-bottom-width:2px;border-radius:6px;padding:1px 6px;font:700 .74rem inherit;color:#2b4269}
+@media(max-width:760px){body{padding:15px}.b-layout{grid-template-columns:1fr}.b-side{position:static}.b-main{padding:18px}.b-top-note{display:none}.b-side-actions{grid-template-columns:1fr 1fr}.bgroup{padding:15px}.b-main-head{margin-bottom:15px}}
+@media(max-width:420px){.b-side-actions{grid-template-columns:1fr}.b-main-head{display:block}.save-state{display:inline-block;margin-top:12px}}
+body{background:radial-gradient(circle at 90% 8%,#17396c 0,transparent 34%),radial-gradient(circle at 0 100%,#241d54 0,transparent 34%),#070d1a;color:#ecf2ff}.b-top{color:#ecf2ff}.b-brand{color:#ecf2ff}.b-mark{background:linear-gradient(135deg,#315fe8,#4f8ef7,#f4709b)}.b-top-note,.b-side .sub,.b-main-head p,.bgroup p,.bfoot{color:#9db1d6}.b-side,.b-main{background:rgba(13,23,46,.94);border-color:rgba(130,175,255,.18);box-shadow:0 22px 50px rgba(0,0,0,.42)}.b-side h1,.b-main-head h2{color:#ecf2ff}.b-preview{background:linear-gradient(145deg,#101e3b,#0a1426);border-color:rgba(130,175,255,.16)}.b-preview-window,.bpreview,.bgroup,.bcheck{background:#101e3b;border-color:rgba(130,175,255,.16)}.b-window-bar{background:#0a1426;border-color:rgba(130,175,255,.12)}.b-tab strong,.bgroup h2{color:#ecf2ff}.b-tab small,.b-preview-head{color:#8197be}.bgroup{background:#0d172e}.step{background:rgba(79,142,247,.16);color:#8cb5ff}.bgroup label{color:#b3c7e9}.bgroup select,.bgroup input[type=text]{background:#0a1426;border-color:rgba(130,175,255,.23);color:#ecf2ff}.bgroup select:focus,.bgroup input:focus{outline-color:rgba(79,142,247,.35);border-color:#4f8ef7}.bpreview span{color:#c3d4f3}.bcheck{color:#b3c7e9}.bcheck:has(input:checked){border-color:#315fe8;background:#132448}.bopen.plain{background:transparent;color:#ff9caf;border-color:rgba(244,112,155,.38)}.b-hint{border-color:rgba(130,175,255,.16);color:#9db1d6}.b-hint strong{color:#ecf2ff}.hint-icon{background:rgba(79,142,247,.16);color:#8cb5ff}.save-state{background:rgba(67,230,159,.14);color:#43e69f}kbd{background:#162749;border-color:rgba(130,175,255,.23);color:#c3d4f3}
+</style>
+</head>
+<body>
+<main class="b-shell">
+<header class="b-top"><div class="b-brand"><span class="b-mark">S</span>Skewl</div><div class="b-top-note"><span class="live-dot"></span>Skewl proxy &bull; cloaked launch</div></header>
+<div class="b-layout">
+<aside class="b-side">
+<h1>Cloak your tab.</h1>
+<p class="sub">Choose a familiar look, set a quick exit, and open the Skewl proxy behind it.</p>
+<div class="b-preview"><div class="b-preview-head"><span>Tab preview</span><span>Live</span></div><div class="b-preview-window"><div class="b-window-bar"><i></i><i></i><i></i></div><div class="b-tab"><img id="cloak-preview-icon" alt="" /><span><strong id="cloak-preview-title"></strong><small>Ready to open</small></span></div></div></div>
+<div class="b-side-actions"><button class="bopen" id="blob-open" type="button">Open Skewl proxy</button><button class="bopen plain" id="panic-now" type="button">Leave now</button></div>
+<div class="b-hint"><span class="hint-icon">&#9432;</span><span><strong>Quick exit</strong>Press <kbd id="key-hint">&#96;</kbd> anytime to leave.</span></div>
+</aside>
+<section class="b-main">
+<div class="b-main-head"><div><h2>Cloaked tab settings</h2><p>Changes update as you make them.</p></div><span class="save-state">Auto-saved</span></div>
+<section class="bgroup"><div class="bgroup-head"><span class="step">1</span><span><h2>Choose a disguise</h2><p>Pick the look you want to see in your tab.</p></span></div><label for="cloak-preset">Tab look</label><select id="cloak-preset"></select><span class="bpreview"><img id="cloak-preview-icon-small" alt="" /><span id="cloak-preview-title-small"></span></span></section>
+<section class="bgroup"><div class="bgroup-head"><span class="step">2</span><span><h2>Set your quick exit</h2><p>Use a single key or the button whenever you need to leave.</p></span></div><label for="panic-key">Keyboard key</label><input id="panic-key" type="text" maxlength="4" autocomplete="off" spellcheck="false" /><label for="panic-dest">Exit destination</label><select id="panic-dest"></select></section>
+<section class="bgroup"><div class="bgroup-head"><span class="step">3</span><span><h2>Launch Skewl proxy</h2><p>Skewl opens in a fresh cloaked <kbd>about:blank</kbd> tab using the disguise above.</p></span></div><label class="bcheck"><input id="decoy-only" type="checkbox" /><span><strong>Preview only</strong><br />Show the familiar dashboard without loading live content.</span></label><button class="bopen" id="blob-open-bottom" type="button">Open Skewl proxy <span aria-hidden="true">&rarr;</span></button><div class="bstatus" id="blob-status" role="status" aria-live="polite"></div></section>
+<p class="bfoot">The tab title and icon change first. Then Skewl loads in the cloaked window.</p>
+</section>
+</div>
+</main>
+<script>
+var PRESETS = ${presetJson};
+var SAFES = ${safesJson};
+var SAFE_LABELS = ${safeLabelsJson};
+var CUR = ${curJson};
+var TARGETS = ${targetsJson};
+function targetLabel(v){ return v === 'auto' ? 'This browser instance' : 'Studyspace (recommended)'; }
+${String(escAttr)}
+${String(buildCloakedHTML)}
+function $(id){ return document.getElementById(id); }
+function status(msg, isErr){ var el = $('blob-status'); el.textContent = msg || ''; el.classList.toggle('error', !!isErr); }
+function defaultTarget(){ try { if (location.origin && location.origin !== 'null' && location.origin.indexOf('http') === 0) return location.origin + '/'; } catch (e) {} try { if (location.protocol.indexOf('http') === 0) return location.href; } catch (e2) {} return 'about:blank'; }
+function refreshPreview(){ var p = PRESETS[$('cloak-preset').value] || PRESETS.schoology; $('cloak-preview-title').textContent = p.title; $('cloak-preview-icon').src = p.icon; $('cloak-preview-title-small').textContent = p.title; $('cloak-preview-icon-small').src = p.icon; }
+function saveAll(){
+  var preset = $('cloak-preset').value; if (!PRESETS[preset]) preset = 'schoology';
+  var key = ($('panic-key').value || '').trim().slice(0, 1) || CUR.panicKey || String.fromCharCode(96);
+  var dest = $('panic-dest').value; if (SAFES.indexOf(dest) < 0) dest = SAFES[0];
+  var tv = TARGETS[0];
+  var decoy = $('decoy-only').checked;
+  try { localStorage.setItem('cloak_settings_v1', JSON.stringify({ preset: preset, panicKey: key, panicDest: dest, target: tv, decoyOnly: decoy })); } catch (e) {}
+  return { preset: preset, key: key, dest: dest, target: tv, decoy: decoy };
+}
+function initBlob(){
+  var ps = $('cloak-preset');
+  for (var k in PRESETS){ var o = document.createElement('option'); o.value = k; o.textContent = k + ' - ' + PRESETS[k].title; ps.appendChild(o); }
+  var pd = $('panic-dest');
+  for (var i = 0; i < SAFES.length; i++){ var q = document.createElement('option'); q.value = SAFES[i]; q.textContent = SAFE_LABELS[i] || 'Safe page'; pd.appendChild(q); }
+  ps.value = (CUR.preset && PRESETS[CUR.preset]) ? CUR.preset : 'schoology';
+  $('panic-key').value = CUR.panicKey || '';
+  $('key-hint').textContent = CUR.panicKey || String.fromCharCode(96);
+  pd.value = (SAFES.indexOf(CUR.panicDest) >= 0) ? CUR.panicDest : SAFES[0];
+  $('decoy-only').checked = !!CUR.decoyOnly;
+  refreshPreview();
+  ps.addEventListener('change', function(){ refreshPreview(); saveAll(); });
+  $('panic-key').addEventListener('change', function(){ saveAll(); $('key-hint').textContent = ($('panic-key').value || '').trim().slice(0, 1) || String.fromCharCode(96); });
+  pd.addEventListener('change', saveAll);
+  $('decoy-only').addEventListener('change', saveAll);
+  document.addEventListener('keydown', function(e){
+    try {
+      var key = ($('panic-key').value || '').trim().slice(0, 1) || CUR.panicKey || String.fromCharCode(96);
+      if (!e || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key !== key) return;
+      var t = document.activeElement;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape' && e.key.length === 1) return;
+      e.preventDefault();
+      var dest = $('panic-dest').value; if (SAFES.indexOf(dest) < 0) dest = SAFES[0];
+      try { location.replace(dest); } catch (err) { location.href = dest; }
+    } catch (err2) {}
+  });
+  $('panic-now').addEventListener('click', function(){
+    var dest = $('panic-dest').value; if (SAFES.indexOf(dest) < 0) dest = SAFES[0];
+    try { location.replace(dest); } catch (e) { location.href = dest; }
+  });
+  function openSpace(){
+    status('');
+    var s = saveAll();
+    var w = null;
+    try { w = window.open('about:blank', '_blank'); } catch (e) { w = null; }
+    if (!w) { status('Popup blocked: allow popups, then try again.', true); return; }
+    var target = (s.target === 'auto') ? defaultTarget() : s.target;
+    try { w.document.open(); w.document.write(buildCloakedHTML(target, s.key, s.dest, s.decoy)); w.document.close(); } catch (e) { status('Blocked. Allow popups and try again.', true); return; }
+    try { w.focus(); } catch (e) {}
+    status('Your space is open.');
+  }
+  $('blob-open').addEventListener('click', openSpace);
+  $('blob-open-bottom').addEventListener('click', openSpace);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBlob);
+else initBlob();
+${SC}
+</body>
+</html>`;
+}
 function openBlob(){
   status('');
   var url = null;

@@ -4136,10 +4136,7 @@ function buildCloakedHTML(targetUrl, panicKey, panicUrl, decoyOnly){
   if (ic) html = html.replace(/(<link\b[^>]*\brel="icon"[^>]*\bhref=")[^"]*(")/i, '$1' + escAttr(ic) + '$2');
   var marker = '<!' + '--CLOAK_BASE-->';
   if (html.indexOf(marker) >= 0) {
-    var b = '';
-    try { b = (location.origin && location.origin !== 'null' && location.origin.indexOf('http') === 0) ? location.origin : ''; } catch (e2) {}
-    if (!b) b = 'https://mnenter.publicmowing.site.blueastroid.com';
-    var tag = '<scr' + 'ipt>window.CLOAK_BASE=' + JSON.stringify(b).replace(/</g, '\\u003c') + ';<\/script>';
+    var tag = '<scr' + 'ipt>window.CLOAK_BASE="https://mnenter.publicmowing.site.blueastroid.com";<\/script>';
     html = html.replace(marker, tag);
   }
   return html;

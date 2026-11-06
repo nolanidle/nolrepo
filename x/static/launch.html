@@ -933,6 +933,13 @@ position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradi
 .nlg-vis{display:flex;justify-content:center;align-items:flex-start}
 .nlg-shot{border:1px solid var(--nl-line2,rgba(57,255,20,.45));padding:6px;background:var(--nl-panel,rgba(57,255,20,.04));max-width:100%}
 .nlg-shot img{display:block;max-width:100%;max-height:calc(100vh - 360px);min-height:120px;object-fit:contain}
+.nlg-step.nlg-noimg{grid-template-columns:minmax(0,1fr);max-width:760px}
+.nlg-shot img{cursor:zoom-in}
+.nlg-shot.nlg-zoom img{max-height:none;cursor:zoom-out}
+.nlg-cap{margin-top:6px;text-align:center;font-size:11px;color:var(--nl-fg-mute,#2e6b23);text-shadow:none}
+.nlg-vis{flex-direction:column;align-items:center}
+.nlg-tip{border-left:2px solid var(--nl-amber,#ffb000);padding:4px 0 4px 10px;color:var(--nl-fg-dim,#5fae4a);font-size:.92em}
+.nlg-tip b{color:var(--nl-white,#d8ffd0)}
 .nlg-ph{position:relative;width:min(100%,360px);padding:10px 12px 12px;color:var(--nl-fg-dim,#5fae4a);text-align:center;border:1px dashed var(--nl-line2,rgba(57,255,20,.45));background:var(--nl-panel,rgba(57,255,20,.04))}
 .nlg-ph .nlg-edge{white-space:pre;overflow:hidden;color:var(--nl-fg-mute,#2e6b23);font-size:12px;line-height:1.1}
 .nlg-phone{width:104px;height:min(190px,calc(100vh - 470px));min-height:110px;margin:10px auto;border:2px solid var(--nl-fg-dim,#5fae4a);border-radius:14px;position:relative;box-shadow:var(--nl-glow,0 0 8px rgba(57,255,20,.4)) }
@@ -4486,27 +4493,54 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   if (window.NolanGuide) return;
 
   var QR_SVG = "<svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 31 31\\" shape-rendering=\\"crispEdges\\"><path stroke=\\"#39ff14\\" d=\\"M1 1.5h7m2 0h1m2 0h1m2 0h2m2 0h2m1 0h7M1 2.5h1m5 0h1m3 0h2m5 0h1m2 0h1m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h2m4 0h1m1 0h1m2 0h2m1 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h5m3 0h4m2 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h2m1 0h5m1 0h4m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h1m1 0h1m2 0h5m4 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h2m1 0h3m1 0h1m2 0h3M1 9.5h1m1 0h5m2 0h2m3 0h2m1 0h1m1 0h1m2 0h5M6 10.5h1m1 0h5m3 0h2m1 0h5m1 0h1m3 0h1M2 11.5h7m4 0h1m4 0h2m1 0h1m1 0h3M2 12.5h2m5 0h2m1 0h1m2 0h1m1 0h1m3 0h3m2 0h1m1 0h1M2 13.5h3m1 0h2m2 0h2m5 0h2m5 0h1m1 0h2M2 14.5h1m1 0h1m1 0h1m2 0h2m2 0h4m1 0h8m3 0h1M1 15.5h2m4 0h1m2 0h2m2 0h5m2 0h1m2 0h4M1 16.5h1m1 0h1m4 0h1m5 0h1m1 0h1m3 0h1m2 0h1m1 0h1m2 0h1M1 17.5h3m1 0h1m1 0h1m1 0h4m2 0h2m1 0h1m7 0h2M1 18.5h2m2 0h2m1 0h6m2 0h10m1 0h1m1 0h1M1 19.5h1m2 0h2m1 0h3m15 0h1m1 0h1M1 20.5h1m4 0h1m1 0h2m5 0h1m1 0h1m2 0h1m3 0h1m3 0h1M1 21.5h1m1 0h1m1 0h4m3 0h1m4 0h1m1 0h1m1 0h5m1 0h3M9 22.5h4m1 0h3m1 0h4m3 0h5M1 23.5h7m2 0h1m1 0h7m1 0h2m1 0h1m1 0h3M1 24.5h1m5 0h1m1 0h1m4 0h1m1 0h1m1 0h4m3 0h1m3 0h1M1 25.5h1m1 0h3m1 0h1m1 0h1m2 0h2m1 0h2m4 0h5m1 0h3M1 26.5h1m1 0h3m1 0h1m1 0h1m3 0h1m2 0h2m1 0h3m4 0h2M1 27.5h1m1 0h3m1 0h1m1 0h1m1 0h3m5 0h10M1 28.5h1m5 0h1m2 0h3m4 0h1m3 0h1m3 0h2m1 0h1M1 29.5h7m1 0h1m1 0h1m1 0h2m2 0h1m1 0h2m1 0h2m1 0h3\\"/></svg>";
-  var N = 8;
+  /* Screenshots live flat in public/ (the auth gate only exempts /x/static/<file>.jpg, no subdirs). */
+  var IMG_ORIGIN = 'https://mnenter.publicmowing.site.blueastroid.com';
   var STEPS = [
-    { t: 'Phone required', k: 'heads up', warn: true, qr: true,
-      b: '<div class="nlg-warnbox"><span class="nlg-big">⚠ HEADS UP</span>This takes about <b>5 minutes</b>. Use your <b>PHONE</b> for this part.</div>' +
-         '<p>NVIDIA and Epic run anti-bot checks that block account creation and linking from inside NoLAN. Your phone sails through them.</p>' +
-         '<p>You only need the phone to <b>create / link accounts</b>. Actual playing happens right here on NoLAN.</p>' },
-    { t: 'Open GeForce NOW on your phone', k: 'phone up', qr: true,
-      b: '<p>Grab your phone. Scan the QR code or type <em>play.geforcenow.com</em> into your mobile browser.</p><p>Keep this screen open. You will come back to it.</p>' },
-    { t: 'Create or sign in to NVIDIA', k: 'nvidia account',
-      b: '<p>Hit <b>Sign In</b> on the phone. No account? Create one. The <b>Free</b> tier is all you need.</p><p>Use a real email you can open right now.</p>' },
-    { t: 'Verify your email', k: 'verify',
-      b: '<p>NVIDIA mails you a verification email. Open it on your phone and tap <b>Verify Email</b>.</p><p>Doing it on this computer instead? <b>RIGHT-CLICK</b> the <b>Verify Email</b> button, pick <b>Copy Link Address</b>, and paste it into NoLAN\\'s <code>VERIFY LINK</code> box. NoLAN pops that box up automatically when NVIDIA asks you to check your email, and the link opens beside GeForce NOW.</p>' },
-    { t: 'Link Epic Games', k: 'link epic games',
-      b: '<p>In GeForce NOW on your phone, go to:</p><p><b>Settings → Connections → Epic Games → Link</b></p><p>This is the step NoLAN can\\'t do for you.</p>' },
-    { t: 'Approve the link on Epic', k: 'epic sign-in',
-      b: '<p>Sign in to Epic Games and approve the connection.</p><p>Want other games? Same idea for <b>Steam / Ubisoft / Xbox</b>. To play Fortnite you <b>must</b> link Epic.</p>' },
-    { t: 'Confirm it says "Linked"', k: 'verify link',
-      b: '<p>Back in Settings → Connections, Epic Games should read <b>Linked</b>.</p><p>Good. <b>Fortnite is free on GeForce NOW.</b></p>' },
+    { t: 'Heads up: Epic needs your phone', k: 'heads up', warn: true, qr: true,
+      b: '<div class="nlg-warnbox"><span class="nlg-big">⚠ HEADS UP</span>This takes about <b>5 minutes</b>. Grab your <b>PHONE</b>.</div>' +
+         '<p>You can create and sign in to your <b>NVIDIA / GeForce NOW account right here in NoLAN</b>. That part works fine.</p>' +
+         '<p>Linking <b>Epic Games</b> (needed for <b>Fortnite</b>) is different. Epic runs an anti-bot check that blocks the link inside NoLAN, so you do this <b>one-time</b> step in the GeForce NOW app on your phone.</p>' +
+         '<p><b>No NVIDIA account yet?</b> Make one in NoLAN first, then come back here. On the phone you must sign in with that <b>same account</b>.</p>' +
+         '<p class="nlg-tip">Tip: when NVIDIA emails you a verification link, <b>right-click</b> the <b>Verify Email</b> button, pick <b>Copy Link Address</b>, and paste it into NoLAN\\'s <code>VERIFY LINK</code> box (it pops up automatically).</p>' },
+    { t: 'Open GeForce NOW in Safari', k: 'safari', qr: true,
+      b: '<p>On your iPhone, open <b>Safari</b>. Scan the QR code with the camera, or type this into the address bar:</p>' +
+         '<p><code>play.geforcenow.com/mall</code></p>' +
+         '<p>You\\'ll land on a page called <b>Set Up to Play</b>. Don\\'t sign in in Safari. You\\'ll install the app first so the Epic sign-in works.</p>' +
+         '<p class="nlg-tip">On Android? Open the same link in <b>Chrome</b>, tap <b>⋮</b> (top right), then <b>Add to Home screen</b> / <b>Install app</b>, and skip to step 06.</p>' },
+    { t: 'Tap the ☰ menu button', k: 'menu', img: 'nolan-guide-epic-menu.jpg',
+      b: '<p>Look at the <b>bottom toolbar</b> in Safari. Just left of the web address there\\'s a button with <b>three lines (☰)</b>.</p>' +
+         '<p><b>Tap it</b> to open Safari\\'s page menu.</p>' +
+         '<p class="nlg-tip">Older iPhones show a <b>Share</b> icon (a square with an up arrow) in the toolbar instead. Tap that and skip to step 04.</p>' },
+    { t: 'Tap "Share"', k: 'share', img: 'nolan-guide-epic-share.jpg',
+      b: '<p>A menu pops up (Ask Siri, Translate, Share, Add to Bookmarks…).</p>' +
+         '<p>Tap <b>Share</b>. It\\'s the one with the square-and-arrow icon.</p>' },
+    { t: 'Scroll to "Add to Home Screen"', k: 'add to home screen', img: 'nolan-guide-epic-addhome.jpg',
+      b: '<p>The share sheet opens. <b>Swipe up</b> to scroll down the list of actions.</p>' +
+         '<p>Tap <b>Add to Home Screen</b> (the square with a <b>+</b>).</p>' +
+         '<p class="nlg-tip">Don\\'t see it? Tap <b>View More</b> to show the full list.</p>' },
+    { t: 'Tap "Add"', k: 'add', img: 'nolan-guide-epic-add.jpg',
+      b: '<p>Leave the name as <b>GeForce NOW</b>, and leave <b>Open as Web App</b> switched <b>on</b> (green).</p>' +
+         '<p>Tap <b>Add</b> in the top-right corner. A green NVIDIA icon now sits on your home screen.</p>' },
+    { t: 'Open the app and sign in', k: 'sign in', img: 'nolan-guide-epic-getin.jpg',
+      b: '<p>Go to your <b>home screen</b> and open the new <b>GeForce NOW</b> app. Use the app, <b>not</b> the Safari tab.</p>' +
+         '<p>Tap <b>GET IN</b>, then sign in with the <b>same NVIDIA account you use in NoLAN</b>.</p>' +
+         '<p class="nlg-tip">If you see "You must tap or click the button to continue", just tap the screen or the button it points to.</p>' },
+    { t: 'Open Connections', k: 'connections', img: 'nolan-guide-epic-library.jpg',
+      b: '<p>You\\'re on the <b>Games</b> home screen. Scroll down to <b>My Library</b>.</p>' +
+         '<p>Tap the tile that says <b>"0 of 7 accounts connected"</b>, labelled <b>Connections</b>.</p>' },
+    { t: 'Find Epic Games, tap CONNECT', k: 'link epic games', img: 'nolan-guide-epic-connect.jpg',
+      b: '<p>You\\'ll see a list of stores: Ubisoft, Battle.net, <b>Epic Games</b>, Gaijin.net…</p>' +
+         '<p>Scroll to <b>Epic Games</b> and tap its <b>CONNECT</b> button.</p>' +
+         '<p class="nlg-tip">It says "Game library sync: Not supported" and "Automatic sign-in: Fortnite only". That\\'s normal and exactly what you need for Fortnite.</p>' },
+    { t: 'Sign in to Epic and approve', k: 'epic sign-in',
+      b: '<p>An Epic Games sign-in page opens. Sign in to your Epic account (or create one), then <b>approve</b> the connection to GeForce NOW.</p>' +
+         '<p>You\\'ll be sent back to the GeForce NOW app. Epic Games should no longer show <b>CONNECT</b>, which means it\\'s linked.</p>' +
+         '<p class="nlg-tip">Play other stores\\' games too? Same screen, same steps: tap <b>CONNECT</b> next to Steam, Ubisoft, Battle.net, etc.</p>' },
     { t: 'Back to NoLAN', k: 'done', last: true,
-      b: '<p>Close this and log in to <b>GeForce NOW here in NoLAN</b>. Your linked account is waiting.</p>' }
+      b: '<p>That\\'s it. You can <b>close the app on your phone</b>. The link is saved to your NVIDIA account.</p>' +
+         '<p>Close this guide and log in to <b>GeForce NOW here in NoLAN</b> with the same account. <b>Fortnite is free on GeForce NOW.</b></p>' }
   ];
+  var N = STEPS.length;
 
   var st = { root: null, i: 0, seen: {}, opts: null, prevFocus: null, keyH: null, busy: 0, tok: 0 };
 
@@ -4539,24 +4573,19 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     })();
   }
 
-  function placeholder(n) {
-    var line = '+' + new Array(60).join('-') + '+';
-    var d = el('div', 'nlg-ph');
-    d.innerHTML = '<div class="nlg-edge" aria-hidden="true">' + line + '</div><div class="nlg-phone" aria-hidden="true"><i></i><i></i><i></i></div>' +
-      '<div class="nlg-lbl">[ screenshot: step ' + n + ' — drop public/nolan-guide-step-' + n + '.png ]</div><div class="nlg-edge" aria-hidden="true">' + line + '</div>';
-    return d;
-  }
-
-  function shot(n) {
-    var wrap = el('div', 'nlg-vis');
+  function shot(s, i, wrap) {
+    var vis = el('div', 'nlg-vis');
     var box = el('div', 'nlg-shot');
     var img = new Image();
-    img.alt = 'Screenshot for step ' + n;
-    img.onerror = function () { img.onerror = null; if (wrap.contains(box)) { wrap.replaceChild(placeholder(n), box); } };
-    img.src = base() + '/x/static/nolan-guide-step-' + n + '.png';
+    img.alt = 'Phone screenshot: ' + s.t;
+    img.title = 'Click to enlarge';
+    img.onerror = function () { img.onerror = null; if (vis.parentNode) vis.parentNode.removeChild(vis); wrap.classList.add('nlg-noimg'); };
+    img.addEventListener('click', function () { box.classList.toggle('nlg-zoom'); });
+    img.src = (base() || IMG_ORIGIN) + '/x/static/' + s.img;
     box.appendChild(img);
-    wrap.appendChild(box);
-    return wrap;
+    vis.appendChild(box);
+    vis.appendChild(el('div', 'nlg-cap', 'step ' + pad(i) + ' · tap image to zoom'));
+    return vis;
   }
 
   function buildStep(i) {
@@ -4582,7 +4611,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
       left.appendChild(d);
     }
     wrap.appendChild(left);
-    wrap.appendChild(shot(i));
+    if (s.img) wrap.appendChild(shot(s, i, wrap)); else wrap.classList.add('nlg-noimg');
     return wrap;
   }
 
@@ -4669,7 +4698,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     if (reason === 'epic') {
       var b = el('div', 'nlg-banner nlg-glitch');
       b.setAttribute('role', 'alert');
-      b.textContent = '⚠ SIGN-IN REQUIRED — Epic Games can\\'t be linked through NoLAN. Follow these steps on your phone, then come back.';
+      b.textContent = '⚠ SIGN-IN REQUIRED — Epic Games can\\'t be linked inside NoLAN. Do this one-time step in the GeForce NOW app on your phone, then come back.';
       r.appendChild(b);
       setTimeout(function () { b.classList.remove('nlg-glitch'); }, 1000);
     }

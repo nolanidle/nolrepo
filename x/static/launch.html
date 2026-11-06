@@ -3943,8 +3943,16 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     var host = '';
     try { host = new URL(url).hostname.toLowerCase(); } catch (e) {}
     if (compat && host) this.compatHosts[host] = true;
-    var sb = SANDBOX_STRICT +
-      ((needsSameOrigin(url) || (host && this.compatHosts[host])) ? ' allow-same-origin' : '');
+    /* Cloudflare challenge pages need the shell's real origin, but Chrome
+     * refuses the combination allow-scripts + allow-same-origin ("can escape
+     * its sandboxing") and the challenge treats that pair as a failed check.
+     * Drop the sandbox attribute instead. The srcdoc document then inherits
+     * the shell origin, which is the same privilege that pair already granted. */
+    if (host && this.compatHosts[host] && !needsSameOrigin(url)) {
+      try { this.frame.removeAttribute('sandbox'); } catch (e) {}
+      return;
+    }
+    var sb = SANDBOX_STRICT + (needsSameOrigin(url) ? ' allow-same-origin' : '');
     try { this.frame.setAttribute('sandbox', sb); } catch (e) {}
   };
 

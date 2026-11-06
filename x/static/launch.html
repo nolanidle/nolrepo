@@ -2522,7 +2522,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   function tabOfWindow(w) {
     var tabs = shell ? shell.tabs() : [];
     for (var steps = 0; w && steps < 40; steps++) {
-      for (var i = 0; i < tabs.length; i++) { if (safe(function () { return tabs[i].frame.contentWindow === w; }, false)) return tabs[i]; }
+      for (var i = 0; i < tabs.length; i++) { if (safe(function () { var cw = tabs[i].frame.contentWindow; return (cw && cw.__cloakRealWin || cw) === (w && w.__cloakRealWin || w); }, false)) return tabs[i]; }
       var p = safe(function () { return w.parent; }, null);
       if (!p || p === w) return null;
       w = p;
@@ -3279,6 +3279,343 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     'encrypted-media', 'fullscreen', 'geolocation', 'gyroscope',
     'microphone', 'picture-in-picture', 'web-share', 'gamepad'
   ].join('; ');
+
+  /* Cross-origin WindowProxy machinery (cloak-next ONLY).
+   *
+   * window.top is [Unforgeable]: every proxied frame sees THIS shell window as
+   * top, and \`top.frames[i]\` / \`top[i]\` / \`top.document.querySelector('iframe')
+   * .contentWindow.document\` hand back the REAL same-origin child Window — so
+   * a challenge iframe can read the parent document
+   * (\`....documentElement.outerHTML\`) that a real cross-origin top would
+   * refuse. Cloudflare's VM feeds that HTML to atob() and dies
+   * (InvalidCharacterError -> TurnstileError 300010; measured 2026-11).
+   * Legitimate code never reaches the real top — veil rewrites
+   * \`top\`/\`window.top\`/\`X.top\` to facades — so expose only the spec'd
+   * cross-origin surface through the shell's own frame accessors.
+   * \`window.frames\` is a configurable accessor (verified); \`window[i]\`
+   * indexed access is NOT interceptable — the remaining hole, mitigated by
+   * restricting every other path. */
+  var XO_PROPS = { window: 1, self: 1, frames: 1, top: 1, parent: 1, opener: 1,
+    closed: 1, length: 1, location: 1, close: 1, focus: 1, blur: 1,
+    postMessage: 1 };
+  var xoCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function isWin(w) { try { return !!w && typeof w === 'object' && w.window === w; } catch (e) { return false; } }
+  function xoView(real) {
+    if (!real || !isWin(real)) return real;
+    if (xoCache) { var c = xoCache.get(real); if (c) return c; }
+    var px = null;
+    px = new Proxy(function () { }, {
+      get: function (t, p) {
+        if (p === '__cloakRealWin') return real;
+        if (p === 'window' || p === 'self' || p === 'frames') return px;
+        if (p === 'postMessage') {
+          return function (m, to, tr) {
+            var o = to;
+            try {
+              // Cross-origin targetOrigin must match the frame's REAL
+              // origin; pages pass the virtual one, so fall back to '*'.
+              if (typeof to === 'string' && /^https?:\\/\\//i.test(to) && to !== real.origin) o = '*';
+            } catch (e) { }
+            try { return real.postMessage(m, o, tr); } catch (e) { }
+          };
+        }
+        if (p === 'top' || p === 'parent' || p === 'opener') {
+          var w = null; try { w = real[p]; } catch (e) { }
+          return isWin(w) ? xoView(w) : (p === 'opener' ? null : px);
+        }
+        if (p === 'closed' || p === 'length') { try { return real[p]; } catch (e) { return undefined; } }
+        if (p === 'location') return undefined; // cross-origin Location reads throw; undefined is close enough
+        if (p === 'close' || p === 'focus' || p === 'blur') {
+          return function () { try { return real[p](); } catch (e) { } };
+        }
+        return undefined;
+      },
+      has: function () { return true; },
+    });
+    if (xoCache) xoCache.set(real, px);
+    return px;
+  }
+  /* Real Window behind a possibly-restricted view (for === checks). */
+  function realWin(w) { try { return (w && w.__cloakRealWin) || w; } catch (e) { return w; } }
+
+  (function () {
+    try {
+      var fd = Object.getOwnPropertyDescriptor(window, 'frames');
+      if (!fd || !fd.configurable) return;
+      var view = new Proxy(window, {
+        get: function (t, p) {
+          if (typeof p === 'string' && XO_PROPS[p]) {
+            var v = t[p];
+            return typeof v === 'function' ? v.bind(t) : v;
+          }
+          var w = null;
+          try { w = t[p]; } catch (e) { return undefined; }
+          return isWin(w) && w !== t ? xoView(w) : w;
+        },
+      });
+      Object.defineProperty(window, 'frames', {
+        configurable: true, enumerable: fd.enumerable !== false,
+        get: function () { return view; },
+      });
+    } catch (e) { }
+  })();
+
+  /* iframe.contentDocument -> null and iframe.contentWindow -> cross-origin
+   * view for PROXIED viewport frames (those carrying __VEIL_CONFIG__).
+   *
+   * \`window.top\` is unforgeable, so \`top.document.querySelector('iframe')
+   * .contentDocument\` / \`.contentWindow.document\` reached the parent page's
+   * Document from the Turnstile widget (measured). A real cross-origin iframe
+   * reports null / a restricted WindowProxy. The shell uses contentWindow
+   * only for \`ev.source ===\` identity checks — updated to unwrap
+   * __cloakRealWin — and never reads contentDocument. Proxied frames use
+   * their OWN realm's HTMLIFrameElement.prototype, unaffected. */
+  /* Blank iframes created in the shell (window.top) are same-origin fresh
+   * realms. Turnstile reads top's iframe contentWindow and calls that realm's
+   * still-native outerHTML on the peet document. Patch the child realm's
+   * reflection getters. Return the real window so
+   * contentWindow === contentDocument.defaultView still holds. */
+  var childRealms = typeof WeakSet === 'function' ? new WeakSet() : null;
+  function guardChildRealm(w) {
+    if (!w || w === window || (childRealms && childRealms.has(w))) return;
+    try { void w.document; } catch (e) { return; }
+    if (childRealms) childRealms.add(w);
+    function wrapGet(proto, name) {
+      var desc = null;
+      try { desc = Object.getOwnPropertyDescriptor(proto, name); } catch (e) { return; }
+      if (!desc || typeof desc.get !== 'function' || !desc.configurable) return;
+      try { if (desc.get.__cloakChildGuard) return; } catch (e) {}
+      var native = desc.get;
+      function guarded() {
+        var doc = null, view = null;
+        try { doc = this && this.nodeType === 9 ? this : (this && this.ownerDocument); } catch (e) {}
+        try { view = doc && doc.defaultView; } catch (e) {}
+        if (view && view !== w) {
+          throw new DOMException('Blocked a frame with origin "https://challenges.cloudflare.com" from accessing a cross-origin frame.', 'SecurityError');
+        }
+        return native.call(this);
+      }
+      try { Object.defineProperty(guarded, '__cloakChildGuard', { value: 1 }); } catch (e) {}
+      try {
+        Object.defineProperty(proto, name, {
+          configurable: true, enumerable: desc.enumerable !== false,
+          get: guarded, set: desc.set,
+        });
+      } catch (e) {}
+    }
+    try {
+      var EP = w.Element && w.Element.prototype;
+      var DP = w.Document && w.Document.prototype;
+      if (EP) { wrapGet(EP, 'outerHTML'); wrapGet(EP, 'innerHTML'); }
+      if (DP) { wrapGet(DP, 'documentElement'); wrapGet(DP, 'body'); wrapGet(DP, 'head'); }
+    } catch (e) {}
+  }
+  (function () {
+    try {
+      var cd = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentDocument');
+      if (cd && typeof cd.get === 'function') {
+        Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {
+          configurable: true, enumerable: cd.enumerable !== false,
+          get: function () {
+            var d = cd.get.call(this);
+            try {
+              var w = d && d.defaultView;
+              if (w && w.__VEIL_CONFIG__) {
+                var foreign = false;
+                try { foreign = window.__cloakForeignCaller && window.__cloakForeignCaller(); } catch (e) {}
+                if (foreign) return null;
+              }
+              if (w) guardChildRealm(w);
+            } catch (e) { }
+            return d;
+          },
+        });
+      }
+      var cw = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+      if (cw && typeof cw.get === 'function') {
+        Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+          configurable: true, enumerable: cw.enumerable !== false,
+          get: function () {
+            var w = cw.get.call(this);
+            try {
+              if (w && w.__VEIL_CONFIG__) return xoView(w);
+              if (w) guardChildRealm(w);
+            } catch (e) { }
+            return w;
+          },
+        });
+      }
+    } catch (e) { }
+  })();
+  (function () {
+    function note(node) {
+      try {
+        if (node && String(node.tagName || '').toUpperCase() === 'IFRAME' && node.contentWindow) guardChildRealm(node.contentWindow);
+      } catch (e) {}
+    }
+    ['appendChild', 'insertBefore', 'replaceChild'].forEach(function (m) {
+      var orig = Node.prototype[m];
+      if (typeof orig !== 'function' || orig.__cloakChildGuard) return;
+      function wrapped() {
+        var r = orig.apply(this, arguments);
+        note(arguments[0]);
+        return r;
+      }
+      try { Object.defineProperty(wrapped, '__cloakChildGuard', { value: 1 }); } catch (e) {}
+      Node.prototype[m] = wrapped;
+    });
+    try {
+      var have = document.querySelectorAll('iframe');
+      for (var i = 0; i < have.length; i++) note(have[i]);
+    } catch (e) {}
+  })();
+
+  /* documentElement / outerHTML / innerHTML on the shell document.
+   * window.top is unforgeable, so the widget can read top.document. Throw when
+   * the caller is another realm (the challenge iframe). The shell reading its
+   * own document is same-realm and stays allowed. */
+  (function () {
+    if (window.__cloakHtmlGuard) return;
+    var DP = window.Document && Document.prototype;
+    var EP = window.Element && Element.prototype;
+    if (!DP || !EP) return;
+    function stripPos(u) { return String(u || '').replace(/:\\d+:\\d+$/, ''); }
+    function deproxyUrl(u) {
+      var clean = stripPos(u);
+      var m = /\\/e\\/[^/]+\\/([sp])\\/([^/?#]+)([^?#]*)(\\?[^]*)?$/.exec(clean);
+      if (!m) return clean;
+      return (m[1] === 's' ? 'https://' : 'http://') + m[2] + (m[3] || '/') + (m[4] || '');
+    }
+    function sameUrl(a, b) {
+      if (!a || !b || a.length < 8 || b.length < 8) return false;
+      return a.indexOf(b) === 0 || b.indexOf(a) === 0;
+    }
+    function urlInThisRealm(url) {
+      if (!url) return false;
+      var cands = [stripPos(url), deproxyUrl(url)];
+      var href = '';
+      try { href = String(location.href || ''); } catch (e) {}
+      for (var c = 0; c < cands.length; c++) if (sameUrl(cands[c], href)) return true;
+      try {
+        var list = document.scripts;
+        for (var i = 0; i < list.length; i++) {
+          var src = list[i] && list[i].src;
+          if (!src) continue;
+          for (var k = 0; k < cands.length; k++) if (sameUrl(cands[k], src)) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+    function foreignByStack() {
+      var stack = '';
+      try { stack = (new Error()).stack || ''; } catch (e) { return false; }
+      var lines = stack.split('\\n');
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (!line) continue;
+        if (line.indexOf('/x/static/shell') !== -1) continue;
+        if (line.indexOf('cloak-compat') !== -1) continue;
+        var m = /(https?:\\/\\/[^\\s)]+)/.exec(line);
+        if (!m) continue;
+        if (urlInThisRealm(m[1])) return false;
+        if (m[1].indexOf('/e/') !== -1 || m[1].indexOf('challenges.cloudflare.com') !== -1) return true;
+        return false;
+      }
+      return false;
+    }
+    function accessBlocked() {
+      var fn = accessBlocked;
+      for (var i = 0; i < 8; i++) {
+        var next = null, threw = false;
+        try { next = fn.caller; } catch (e) { threw = true; }
+        if (threw) return foreignByStack();
+        if (!next || next === fn) break;
+        fn = next;
+        try { if (next.__cloakGuard === 1) continue; } catch (e) {}
+        try {
+          if (next instanceof Function) return false;
+          return true;
+        } catch (e) { return foreignByStack(); }
+      }
+      return foreignByStack();
+    }
+    try { Object.defineProperty(accessBlocked, '__cloakGuard', { value: 1 }); } catch (e) {}
+    function blocked() {
+      throw new DOMException('Blocked a frame with origin "https://challenges.cloudflare.com" from accessing a cross-origin frame.', 'SecurityError');
+    }
+    function guardGet(proto, name) {
+      var d = null;
+      try { d = Object.getOwnPropertyDescriptor(proto, name); } catch (e) {}
+      if (!d || !d.configurable || typeof d.get !== 'function') return;
+      var nativeGet = d.get;
+      function guarded() {
+        if (accessBlocked()) blocked();
+        return nativeGet.call(this);
+      }
+      try { Object.defineProperty(guarded, '__cloakGuard', { value: 1 }); } catch (e) {}
+      try {
+        Object.defineProperty(proto, name, {
+          configurable: true, enumerable: d.enumerable !== false,
+          get: guarded, set: d.set,
+        });
+      } catch (e) {}
+    }
+    guardGet(DP, 'documentElement');
+    guardGet(DP, 'body');
+    guardGet(DP, 'head');
+    guardGet(EP, 'outerHTML');
+    guardGet(EP, 'innerHTML');
+    try {
+      var XP = window.XMLSerializer && XMLSerializer.prototype;
+      var ser = XP && XP.serializeToString;
+      if (typeof ser === 'function' && !ser.__cloakHtmlGuard) {
+        function serializeToString(node) {
+          var doc = null, view = null;
+          try { doc = node && (node.nodeType === 9 ? node : node.ownerDocument); } catch (e) {}
+          try { view = doc && doc.defaultView; } catch (e) {}
+          if ((view && view !== window) || accessBlocked()) blocked();
+          return ser.call(this, node);
+        }
+        try { Object.defineProperty(serializeToString, '__cloakHtmlGuard', { value: 1 }); } catch (e) {}
+        XP.serializeToString = serializeToString;
+      }
+    } catch (e) {}
+    try {
+      var sd = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc');
+      if (sd && typeof sd.get === 'function' && sd.configurable) {
+        Object.defineProperty(HTMLIFrameElement.prototype, 'srcdoc', {
+          configurable: true, enumerable: sd.enumerable !== false,
+          get: function () {
+            if (accessBlocked()) blocked();
+            return sd.get.call(this);
+          },
+          set: sd.set,
+        });
+      }
+      var ga = Element.prototype.getAttribute;
+      if (typeof ga === 'function' && !ga.__cloakHtmlGuard) {
+        function getAttribute(name) {
+          if (String(name).toLowerCase() === 'srcdoc' && accessBlocked()) blocked();
+          return ga.apply(this, arguments);
+        }
+        try { Object.defineProperty(getAttribute, '__cloakHtmlGuard', { value: 1 }); } catch (e) {}
+        Element.prototype.getAttribute = getAttribute;
+      }
+      var av = Object.getOwnPropertyDescriptor(Attr.prototype, 'value');
+      if (av && typeof av.get === 'function' && av.configurable) {
+        Object.defineProperty(Attr.prototype, 'value', {
+          configurable: true, enumerable: av.enumerable !== false,
+          get: function () {
+            try { if (String(this.name).toLowerCase() === 'srcdoc' && accessBlocked()) blocked(); } catch (e) {}
+            return av.get.call(this);
+          },
+          set: av.set,
+        });
+      }
+    } catch (e) {}
+    window.__cloakHtmlGuard = true;
+    try { window.__cloakForeignCaller = accessBlocked; } catch (e) {}
+  })();
   /* allow-pointer-lock: cloud-gaming pages (GFN) lock the pointer for mouse look;
    * without it Chrome logs "Blocked pointer lock ... frame is sandboxed". */
   var SANDBOX_STRICT = 'allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock';
@@ -3551,6 +3888,11 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     this.token = 0;
     this.abort = null;
     this.blobUrl = null;
+    /* Hosts whose docs asked for compat mode (data.compat from /x/doc —
+     * Cloudflare challenge/Turnstile pages). Once a host asks it stays compat
+     * for this tab: the challenge bounces across several navigations and every
+     * hop needs the same-origin frame tree. */
+    this.compatHosts = Object.create(null);
 
     var tpl = document.createElement('div');
     tpl.className = 'pane';
@@ -3596,9 +3938,13 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     this.render();
   }
 
-  Tab.prototype.applySandbox = function (url) {
+  Tab.prototype.applySandbox = function (url, compat) {
     // Set before the srcdoc assignment in go(), so the flags apply to it.
-    var sb = SANDBOX_STRICT + (needsSameOrigin(url) ? ' allow-same-origin' : '');
+    var host = '';
+    try { host = new URL(url).hostname.toLowerCase(); } catch (e) {}
+    if (compat && host) this.compatHosts[host] = true;
+    var sb = SANDBOX_STRICT +
+      ((needsSameOrigin(url) || (host && this.compatHosts[host])) ? ' allow-same-origin' : '');
     try { this.frame.setAttribute('sandbox', sb); } catch (e) {}
   };
 
@@ -3705,7 +4051,9 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
       if (data.sid) { try { localStorage.setItem(SID_KEY, data.sid); } catch (e) {} }
       var finalUrl = data.finalUrl || abs;
       // Redirects may change which origin's storage and sandbox policy apply.
-      self.applySandbox(finalUrl);
+      // data.compat: Cloudflare challenge/Turnstile docs need allow-same-origin
+      // so the challenge's probe frames are readable (docs/turnstile.md).
+      self.applySandbox(finalUrl, data.compat === true);
       self.url = finalUrl;
       if (self.index >= 0) self.history[self.index] = finalUrl;
       if (data.title) self.title = CN.decode(data.title);
@@ -3814,7 +4162,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   window.addEventListener('message', function (ev) {
     var d = ev && ev.data;
     if (!d || typeof d !== 'object' || (d.cloakKbd !== 'lock' && d.cloakKbd !== 'unlock')) return;
-    if (!active || !active.frame || ev.source !== active.frame.contentWindow) return;
+    if (!active || !active.frame || ev.source !== realWin(active.frame.contentWindow)) return;
     var reply = function (ok, err) {
       // The shell's own native postMessage, NOT ev.source.postMessage: the frame's
       // window has cloak-compat's wrapper installed, which envelopes payloads.
@@ -3830,7 +4178,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   window.addEventListener('message', function (ev) {
     var d = ev && ev.data;
     if (!d || typeof d !== 'object' || d.veil !== true) return;
-    if (!active || !active.frame || ev.source !== active.frame.contentWindow) return;
+    if (!active || !active.frame || ev.source !== realWin(active.frame.contentWindow)) return;
     if (d.type === 'navigate' && d.url) active.go(d.url, d.replace ? 'replace' : 'push',
       d.method && String(d.method).toUpperCase() !== 'GET' ? { method: String(d.method), body: typeof d.body === 'string' ? d.body : '', contentType: typeof d.contentType === 'string' ? d.contentType : '' } : undefined);
     else if (d.type === 'url' && d.url) {
@@ -3879,8 +4227,8 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   window.addEventListener('message', function (ev) {
     var d = ev && ev.data;
     if (!d || typeof d !== 'object') return;
-    var fromSheet = ev.source === sheetFrame.contentWindow;
-    var fromGate = ev.source === $('gateFrame').contentWindow;
+    var fromSheet = ev.source === realWin(sheetFrame.contentWindow);
+    var fromGate = ev.source === realWin($('gateFrame').contentWindow);
     if (fromSheet && d.cloakShell === 'open' && typeof d.url === 'string') {
       var abs = normalizeUrl(d.url);
       if (abs && active) { closeSheet(); if (d.newTab) newTab(abs); else active.go(abs); }

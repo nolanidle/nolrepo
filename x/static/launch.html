@@ -5480,6 +5480,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
         self.loading = false;
         self.render();
         syncChrome();
+        maybeGateNvidiaAuth(finalUrl);
       }).catch(function (err) {
         if (self.token !== myToken) return;
         if (err && err.name === 'AbortError') return;
@@ -5578,6 +5579,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
       t.url = d.url;
       if (t.index >= 0) t.history[t.index] = d.url;
       t.render(); syncChrome();
+      maybeGateNvidiaAuth(d.url);
     } else if (d.type === 'title' && d.title) {
       t.title = String(d.title);
       t.render();
@@ -5909,6 +5911,38 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
   var booted = false, pendingGfn = false;
   function loadGate(page, query) {
     if (!CNPages.load($('gateFrame'), page, { embed: true, query: query || {} })) $('gateFrame').src = CN.page(page + '.html', Object.assign({ embed: 1 }, query || {}));
+  }
+  /* NVIDIA auth pages should never be seen: when the GFN view lands on one
+   * and there is no live credential handoff, cover it with the NoLAN GFN
+   * gate. After sign-in the handoff is stored and gfn-autofill.js completes
+   * the NVIDIA form underneath (still within its 3-minute poll window). */
+  function isNvidiaAuthUrl(u) {
+    try {
+      var p = new URL(u), h = p.hostname.toLowerCase(), path = p.pathname.toLowerCase();
+      if (!/(^|\\.)(nvidia\\.com|geforcenow\\.com)$/.test(h)) return false;
+      if (/logout|callback|signout/.test(path)) return false;
+      if (/(^|\\.)(login|accounts?|nvgs|id|auth|signin|sso|static-login)(\\.|$)/.test(h)) return true;
+      return /\\/(login|signin|sign-in|signup|sign-up|register|identifier|authorize)\\b/.test(path);
+    } catch (e) { return false; }
+  }
+  var GFN_KEY_TAIL = 'nolan.gfn';
+  function gfnHandoffPresent() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k == null || k.slice(-GFN_KEY_TAIL.length) !== GFN_KEY_TAIL) continue;
+        var d = null;
+        try { d = JSON.parse(localStorage.getItem(k)); } catch (e) {}
+        if (d && d.email && d.password && (!d.at || Date.now() - d.at < 15 * 60 * 1000)) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  function maybeGateNvidiaAuth(url) {
+    if (!$('gate').hidden) return;
+    if (!isNvidiaAuthUrl(url)) return;
+    if (gfnHandoffPresent()) return;
+    openGfnAuth();
   }
   /* GFN account page: same gate overlay as sign-in, but reachable while
    * already authenticated (it mints a fresh session on success either way). */

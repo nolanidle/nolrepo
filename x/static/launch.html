@@ -1011,7 +1011,7 @@ body.shell { display: flex; flex-direction: column; height: 100vh; overflow: hid
 #homeView[hidden] { display: none; }
 #homeView { overflow: hidden; }
 /* GFN view: hidden with visibility only so the iframe is never reparented/reloaded */
-#gfnWrap { position: relative; display: flex; flex-direction: row; background: #000; }
+#gfnWrap { position: absolute; inset: 0; display: flex; flex-direction: row; background: #000; }
 #gfnWrap.is-off { visibility: hidden; pointer-events: none; }
 #gfnWrap.is-muted { display: none; }
 #gfnSlot { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; }
@@ -5683,6 +5683,7 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
       // session is untouched — just uncover the NVIDIA page underneath.
       $('gate').hidden = true;
       CNPages.blank($('gateFrame'));
+      gfnBeacon('fill-begin', active && active.url);
       showGfnFill();
     } else if ((fromSheet || fromGate) && d.cloakAuth === 'expired') {
       showGate(d.reason === 'elsewhere' ? 'superseded' : null);
@@ -5989,11 +5990,26 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     gfnPwAt = 0;
     if (gfnFillTimer) { clearTimeout(gfnFillTimer); gfnFillTimer = 0; }
   }
+  function gfnBeacon(msg, url) {
+    try {
+      CN.api('/api/client-errors', {
+        method: 'POST', noAuthRedirect: true,
+        json: { events: [{ kind: 'gfn-autofill', message: msg, url: String(url || '').slice(0, 500) }] }
+      }).then(function () {}, function () {});
+    } catch (e) {}
+  }
   function maybeGateNvidiaAuth(url) {
     if (!isNvidiaAuthUrl(url)) { hideGfnFill(); return; }
     if (!$('gate').hidden) return;
+    /* A credential page right after the password click = bounced login.
+     * Check this BEFORE the handoff test: a leftover key must not let the
+     * autofill loop the same bad credentials under an invisible page. */
+    if (gfnPwAt && Date.now() - gfnPwAt > 4000) {
+      gfnBeacon('gate-reopen-auth-fail', url);
+      hideGfnFill(); openGfnAuth(true, 'auth'); return;
+    }
     if (gfnHandoffPresent()) return;
-    if (gfnPwAt && Date.now() - gfnPwAt > 4000) { hideGfnFill(); openGfnAuth(true, 'auth'); return; }
+    gfnBeacon('gate-open', url);
     openGfnAuth(true);
   }
   /* GFN account page: same gate overlay as sign-in, but reachable while

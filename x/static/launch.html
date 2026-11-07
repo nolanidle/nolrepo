@@ -50,11 +50,36 @@
     statusEl.style.display = msg ? 'block' : 'none';
   }
 
+  var CACHE_KEY = 'dislaunch.raw.v1';
+  var TTL_MS = 5 * 60 * 1000;
+
+  function cacheGet() {
+    try {
+      var d = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (d && typeof d.html === 'string' && d.html.length > 1000 && typeof d.at === 'number') return d;
+    } catch (e) {}
+    return null;
+  }
+  function cacheSet(html) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), html: html })); } catch (e) {}
+  }
+
   view.addEventListener('load', function () {
     if (view.srcdoc && view.srcdoc.length > 1000) status('');
   });
 
-  function load() {
+  function render(html) {
+    status('rendering…');
+    view.srcdoc = html;
+  }
+
+  function load(force) {
+    var cached = cacheGet();
+    var age = cached ? Date.now() - cached.at : Infinity;
+    if (!force && cached && age < TTL_MS) {
+      render(cached.html);
+      return;
+    }
     status('fetching dislaunch/raw…');
     var url = ENDPOINT + '?v=' + rid(24);
     fetch(url, { cache: 'no-store', credentials: 'omit' })
@@ -64,18 +89,23 @@
       })
       .then(function (html) {
         if (!html || html.length < 1000) throw new Error('empty response');
-        status('rendering…');
-        view.srcdoc = html;
+        cacheSet(html);
+        render(html);
       })
       .catch(function (e) {
+        if (cached) {
+          render(cached.html);
+          status('fetch failed — showing cached version', true);
+          return;
+        }
         status('failed: ' + (e && e.message ? e.message : e), true);
         view.srcdoc = '<!doctype html><body style="font:16px monospace;padding:24px">Failed to load dislaunch/raw: ' +
           String(e && e.message ? e.message : e).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</body>';
       });
   }
 
-  document.getElementById('reload').addEventListener('click', load);
-  load();
+  document.getElementById('reload').addEventListener('click', function () { load(true); });
+  load(false);
 })();
 </script>
 </body>

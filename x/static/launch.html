@@ -23,7 +23,6 @@
 <body>
 <iframe id="view" title="dislaunch"></iframe>
 <div id="status">loading…</div>
-<button id="reload" type="button" title="Reload">↻</button>
 <script>
 (function () {
   'use strict';
@@ -103,8 +102,6 @@
           String(e && e.message ? e.message : e).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</body>';
       });
   }
-
-  document.getElementById('reload').addEventListener('click', function () { load(true); });
   load(false);
 })();
 </script>

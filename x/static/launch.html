@@ -5656,6 +5656,9 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
       // session is untouched — just uncover the NVIDIA page underneath.
       $('gate').hidden = true;
       CNPages.blank($('gateFrame'));
+      // Keep the gate closed through the rest of the auth flow (password,
+      // verify, consent pages) so the user can finish it manually if needed.
+      gfnGateHoldUntil = Date.now() + 3 * 60 * 1000;
     } else if ((fromSheet || fromGate) && d.cloakAuth === 'expired') {
       showGate(d.reason === 'elsewhere' ? 'superseded' : null);
     } else if (fromGate && d.cloakAuth === 'login') {
@@ -5925,9 +5928,11 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     try {
       var p = new URL(u), h = p.hostname.toLowerCase(), path = p.pathname.toLowerCase();
       if (!/(^|\\.)(nvidia\\.com|geforcenow\\.com)$/.test(h)) return false;
-      if (/logout|callback|signout/.test(path)) return false;
-      if (/(^|\\.)(login|accounts?|nvgs|id|auth|signin|sso|static-login)(\\.|$)/.test(h)) return true;
-      return /\\/(login|signin|sign-in|signup|sign-up|register|identifier|authorize)\\b/.test(path);
+      if (/logout|callback|signout|verify|enroll|poll/.test(path)) return false;
+      /* Only the credential-entry steps are covered: verify-code, CAPTCHA and
+       * consent pages on auth hosts must stay reachable or the user is
+       * trapped under the gate mid-flow. */
+      return /\\/(login|log-in|signin|sign-in|signup|sign-up|register|create-?account|identifier)\\b/.test(path);
     } catch (e) { return false; }
   }
   var GFN_KEY_TAIL = 'nolan.gfn';
@@ -5943,8 +5948,10 @@ body.prank-shaking { animation: prank-wobble 70ms infinite; }
     } catch (e) {}
     return false;
   }
+  var gfnGateHoldUntil = 0;
   function maybeGateNvidiaAuth(url) {
     if (!$('gate').hidden) return;
+    if (Date.now() < gfnGateHoldUntil) return;
     if (!isNvidiaAuthUrl(url)) return;
     if (gfnHandoffPresent()) return;
     openGfnAuth(true);

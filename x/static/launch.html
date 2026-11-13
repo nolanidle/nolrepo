@@ -18,15 +18,32 @@
     width: 34px; height: 34px; border: 1px solid #444; border-radius: 8px;
     background: rgba(0,0,0,.72); color: #fff; font-size: 18px; cursor: pointer;
   }
+  /* shown only for a social referral link: the app opens in this tab as a blob: page */
+  #ref { position: fixed; inset: 0; z-index: 3; display: none; place-items: center; background: #020602; color: #39ff14;
+         font: 600 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: center; padding: 24px; }
+  #ref .t { font-size: 28px; font-weight: 800; color: #eafff0; text-shadow: 0 0 12px rgba(57,255,20,.7); margin-bottom: 10px; }
+  #ref .bar { width: 260px; height: 4px; margin: 16px auto 10px; background: rgba(57,255,20,.15); overflow: hidden; }
+  #ref .bar i { display: block; width: 40%; height: 100%; background: #39ff14; box-shadow: 0 0 10px #39ff14; animation: m 1.1s ease-in-out infinite; }
+  @keyframes m { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+  #ref #refMsg { color: #7fae88; font-size: 12px; } #ref #refMsg.e { color: #ff6b6b; }
 </style>
 </head>
 <body>
 <iframe id="view" title="dislaunch"></iframe>
+<div id="ref"><div><div class="t">You were referred by social media</div><div>Opening NoLAN&hellip;</div><div class="bar"><i></i></div><div id="refMsg">&gt; downloading the app...</div></div></div>
 <div id="status">loading…</div>
 <script>
 (function () {
   'use strict';
   var ENDPOINT = 'https://mnenter.publicmowing.site.blueastroid.com/dislaunch/raw';
+  /* Social referral: this page is the target of
+   *   https://jolly-coast-001494910.3.azurestaticapps.net/?refer=from_social&prod=_nolan&realms_refer_cid=MN-XXXXXX
+   * It remembers the code, opens the NoLAN app (launch.html) as a blob: page in this tab, and the app shows "referred by social media",
+   * moves to Create account and redeems the code after the email is verified (referrer +200 credits, new account +100). */
+  var APP_URL = 'https://mnenter.publicmowing.site.blueastroid.com/x/static/launch.html';
+  var APP_BASE = 'https://mnenter.publicmowing.site.blueastroid.com';
+  var APP_CACHE_KEY = 'nolan.app.v1';
+  var REF_KEY = 'nolan.ref.v1';
   var CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   var view = document.getElementById('view');
   var statusEl = document.getElementById('status');
@@ -47,6 +64,62 @@
     statusEl.textContent = msg || '';
     statusEl.style.color = bad ? '#f88' : '#9f9';
     statusEl.style.display = msg ? 'block' : 'none';
+  }
+
+  /* ---------- social referral link ---------- */
+  function referralFromUrl() {
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get('refer') !== 'from_social') return null;
+      var t = String(q.get('realms_refer_cid') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (t.length === 8 && t.indexOf('MN') === 0) t = t.slice(2);
+      if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(t)) return null;
+      return { code: 'MN-' + t, src: 'social', at: Date.now() };
+    } catch (e) { return null; }
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function fetchApp() {
+    function cached() { try { return localStorage.getItem(APP_CACHE_KEY) || ''; } catch (e) { return ''; } }
+    return fetch(APP_URL + '?t=' + Date.now(), { cache: 'no-store', credentials: 'omit' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function (t) {
+        if (!t || t.indexOf('<html') < 0 || t.length < 50000) throw new Error('unexpected response');
+        try { localStorage.setItem(APP_CACHE_KEY, t); } catch (e) {}
+        return t;
+      }, function (err) { var c = cached(); if (c) return c; throw err; });
+  }
+
+  function buildApp(html, ref) {
+    var title = document.title || 'Home | Schoology', icon = (document.getElementById('favicon') || {}).href || '';
+    try {
+      var s = JSON.parse(localStorage.getItem('cloak_settings_v1') || '{}');
+      if (s && s.title) title = s.title;
+      if (s && s.icon) icon = s.icon;
+    } catch (e) {}
+    html = html.replace(/<title>[\s\S]*?<\/title>/i, '<title>' + esc(title) + '</title>');
+    if (icon) html = html.replace(/(<link\b[^>]*\brel="icon"[^>]*\bhref=")[^"]*(")/i, '$1' + esc(icon) + '$2');
+    var boot = '<scr' + 'ipt>window.CLOAK_BASE=' + JSON.stringify(APP_BASE) + ';window.__NL_REFERRAL=' + JSON.stringify({ code: ref.code, src: 'social' }) + ';<\/script>';
+    var marker = '<!' + '--CLOAK_BASE-->';
+    return html.indexOf(marker) >= 0 ? html.replace(marker, boot) : html.replace(/<head[^>]*>/i, function (m) { return m + boot; });
+  }
+
+  function openReferral(ref) {
+    try { localStorage.setItem(REF_KEY, JSON.stringify(ref)); } catch (e) {}
+    document.getElementById('ref').style.display = 'grid';
+    view.style.display = 'none';
+    statusEl.style.display = 'none';
+    var msg = document.getElementById('refMsg');
+    fetchApp().then(function (html) {
+      var u = URL.createObjectURL(new Blob([buildApp(html, ref)], { type: 'text/html' }));
+      msg.textContent = '> opening...';
+      /* brief beat so the "referred by social media" screen is seen, then straight into the blob page */
+      setTimeout(function () { location.replace(u); }, 900);
+    }).catch(function (e) {
+      msg.className = 'e';
+      msg.textContent = '> could not download the app (' + (e && e.message ? e.message : e) + '). Reload this page to try again.';
+    });
   }
 
   var CACHE_KEY = 'dislaunch.raw.v1';
@@ -102,7 +175,9 @@
           String(e && e.message ? e.message : e).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</body>';
       });
   }
-  load(false);
+
+  var ref = referralFromUrl();
+  if (ref) openReferral(ref); else load(false);
 })();
 </script>
 </body>
